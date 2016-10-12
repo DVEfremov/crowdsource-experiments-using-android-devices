@@ -16,29 +16,38 @@
 
 package openscience.crowdsource.experiments;
 
-import android.app.ActivityManager;
+
+import android.app.Activity;
 import android.app.AlertDialog;
-import android.content.Context;
+import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.pm.ConfigurationInfo;
+import android.content.res.AssetManager;
+import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.hardware.Camera;
 import android.net.Uri;
 import android.opengl.GLES10;
-import android.opengl.GLES10Ext;
-import android.opengl.GLSurfaceView;
 import android.os.AsyncTask;
 import android.os.Build;
-import android.os.Handler;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.os.Environment;
+import android.os.Handler;
+import android.os.SystemClock;
+import android.provider.MediaStore;
 import android.util.Base64;
-import android.util.DisplayMetrics;
 import android.util.Log;
+import android.view.SurfaceHolder;
+import android.view.SurfaceView;
 import android.view.View;
 import android.widget.Button;
-import android.widget.CheckBox;
 import android.widget.EditText;
-import android.widget.Toast;
+import android.widget.TextView;
+import android.widget.VideoView;
+
+import com.sh1r0.caffe_android_demo.CNNListener;
+import com.sh1r0.caffe_android_lib.CaffeMobile;
 
 import org.ctuning.openme.openme;
 import org.json.JSONException;
@@ -46,7 +55,6 @@ import org.json.JSONObject;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
-import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -60,18 +68,23 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Iterator;
+import java.util.Date;
 import java.util.List;
+import java.util.Scanner;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
-import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends Activity implements SurfaceHolder.Callback , CNNListener{
 
-    String welcome = "Dear friends! Thank you for participating in experiment crowdsourcing " +
+    private static final int REQUEST_IMAGE_CAPTURE = 100;
+    private static final int REQUEST_IMAGE_SELECT = 200;
+    public static final int MEDIA_TYPE_IMAGE = 1;
+
+    String welcome = "We would like to thank you for participating in experiment crowdsourcing " +
             "to collaboratively solve complex problems!\n\n" +
             "One of the available scenarios is collaborative optimization of computer systems: " +
             "computers become very inefficient and it is not uncommon to get 10x speedups, " +
@@ -84,9 +97,9 @@ public class MainActivity extends AppCompatActivity {
             " to download differently optimized kernels with various data sets,"+
             " run them on your mobile device, and send execution statistics back" +
             " to a public Collective Knowledge Server!\n\n"+
-            "We would like to sincerely thank you for supporting our reproducible and open science initiatives " +
-            " and helping us optimize computer systems to accelerate knowledge discovery, " +
-            "boost innovation in science and technology, and make our planet greener!\n";
+            "We would like to sincerely thank you for supporting our reproducible and open science initiatives" +
+            " and helping us optimize computer systems to accelerate knowledge discovery," +
+            " boost innovation in science and technology, and make our planet greener!\n\n";
 
     String problem="maybe it is overloaded or down! We hope to get some sponsorship soon to move our old CK server to the cloud! In the mean time, please contact the author (Grigori.Fursin@cTuning.org) about this problem!";
 
@@ -114,6 +127,31 @@ public class MainActivity extends AppCompatActivity {
     EditText log = null;
     Button b_start = null;
 
+    private Button btnSelect;
+
+//    private ImageView ivCaptured;
+    private VideoView videoPreview;
+
+    private TextView tvLabel;
+    private ProgressDialog dialog;
+    private Bitmap bmp;
+
+    private Uri fileUri;
+    private CaffeMobile caffeMobile;
+    File sdcard = Environment.getExternalStorageDirectory();
+    String modelDir = sdcard.getAbsolutePath() + "/caffe_mobile/bvlc_reference_caffenet";
+
+
+    String modelProto = modelDir + "/deploy.prototxt";
+    String modelBinary = modelDir + "/bvlc_reference_caffenet.caffemodel";
+
+    static {
+        System.loadLibrary("caffe");
+        System.loadLibrary("caffe_jni");
+    }
+
+    private static String[] IMAGENET_CLASSES;
+
     String cemail="email.txt";
     String path1="ck-crowdtuning";
 
@@ -135,16 +173,295 @@ public class MainActivity extends AppCompatActivity {
 
     boolean skip_freq_check=true;
 
+    /**
+     * Create a file Uri for saving an image or video
+     */
+    private static Uri getOutputMediaFileUri(int type) {
+        return Uri.fromFile(getOutputMediaFile(type));
+    }
+
+    /**
+     * Create a File for saving an image or video
+     */
+    private static File getOutputMediaFile(int type) {
+        // To be safe, you should check that the SDCard is mounted
+        // using Environment.getExternalStorageState() before doing this.
+
+        File mediaStorageDir = new File(Environment.getExternalStoragePublicDirectory(
+                Environment.DIRECTORY_PICTURES), "Caffe-Android-Demo");
+        // This location works best if you want the created images to be shared
+        // between applications and persist after your app has been uninstalled.
+
+
+        // Create the storage directory if it does not exist
+        if (!mediaStorageDir.exists()) {
+            if (!mediaStorageDir.mkdirs()) {
+                Log.d("MyCameraApp", "failed to create directory");
+                return null;
+            }
+        }
+
+        // Create a media file name
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+        File mediaFile;
+        if (type == MEDIA_TYPE_IMAGE) {
+            mediaFile = new File(mediaStorageDir.getPath() + File.separator +
+                    "IMG_" + timeStamp + ".jpg");
+        } else {
+            return null;
+        }
+
+        return mediaFile;
+    }
+
+    Camera camera;
+    SurfaceView surfaceView;
+    SurfaceHolder surfaceHolder;
+    Camera.PictureCallback rawCallback;
+    Camera.ShutterCallback shutterCallback;
+    Camera.PictureCallback jpegCallback;
+    private final String tag = "VideoServer";
+
+    Button start, capture;
+//    Button stop;
+
+
+    /** Called when the activity is first created. */
+    public void onCreate2(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+
+        start = (Button)findViewById(R.id.btn_start);
+        start.setOnClickListener(new Button.OnClickListener()
+        {
+            public void onClick(View arg0) {
+                start_camera();
+            }
+        });
+        capture = (Button) findViewById(R.id.capture);
+
+//        stop = (Button)findViewById(R.id.btn_stop);
+//        stop.setOnClickListener(new Button.OnClickListener()
+//        {
+//            public void onClick(View arg0) {
+//                stop_camera();
+//            }
+//        });
+        capture.setOnClickListener(new View.OnClickListener() {
+
+            @Override
+            public void onClick(View v) {
+                // TODO Auto-generated method stub
+                captureImage();
+            }
+        });
+
+        surfaceView = (SurfaceView)findViewById(R.id.surfaceView1);
+        surfaceHolder = surfaceView.getHolder();
+        surfaceHolder.addCallback(this);
+        surfaceHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
+        rawCallback = new Camera.PictureCallback() {
+            public void onPictureTaken(byte[] data, Camera camera) {
+                Log.d("Log", "onPictureTaken - raw");
+            }
+        };
+
+        /** Handles data for jpeg picture */
+        shutterCallback = new Camera.ShutterCallback() {
+            public void onShutter() {
+                Log.i("Log", "onShutter'd");
+            }
+        };
+        jpegCallback = new Camera.PictureCallback() {
+            public void onPictureTaken(byte[] data, Camera camera) {
+                FileOutputStream outStream = null;
+                try {
+                    outStream = new FileOutputStream(String.format(
+                            "/sdcard/%d.jpg", System.currentTimeMillis()));
+                    outStream.write(data);
+                    outStream.close();
+                    Log.d("Log", "onPictureTaken - wrote bytes: " + data.length);
+                } catch (FileNotFoundException e) {
+                    e.printStackTrace();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } finally {
+                }
+                Log.d("Log", "onPictureTaken - jpeg");
+            }
+        };
+    }
+
+    private void captureImage() {
+        // TODO Auto-generated method stub
+        camera.takePicture(shutterCallback, rawCallback, jpegCallback);
+    }
+
+    private void start_camera()
+    {
+        try{
+            camera = Camera.open();
+        }catch(RuntimeException e){
+            Log.e(tag, "init_camera: " + e);
+            return;
+        }
+        Camera.Parameters param;
+        param = camera.getParameters();
+        //modify parameter
+        param.setPreviewFrameRate(20);
+        param.setPreviewSize(176, 144);
+        camera.setParameters(param);
+        try {
+            camera.setPreviewDisplay(surfaceHolder);
+            camera.startPreview();
+            //camera.takePicture(shutter, raw, jpeg)
+        } catch (Exception e) {
+            Log.e(tag, "init_camera: " + e);
+            return;
+        }
+    }
+
+    private void stop_camera()
+    {
+        camera.stopPreview();
+        camera.release();
+    }
+
+    public void surfaceChanged(SurfaceHolder arg0, int arg1, int arg2, int arg3) {
+        // TODO Auto-generated method stub
+    }
+
+    public void surfaceCreated(SurfaceHolder holder) {
+        // TODO Auto-generated method stub
+    }
+
+    public void surfaceDestroyed(SurfaceHolder holder) {
+        // TODO Auto-generated method stub
+    }
+
+
+
     /*************************************************************************/
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+
+        start = (Button)findViewById(R.id.btn_start);
+        start.setOnClickListener(new Button.OnClickListener()
+        {
+            public void onClick(View arg0) {
+                start_camera();
+            }
+        });
+        capture = (Button) findViewById(R.id.capture);
+//        stop = (Button)findViewById(R.id.btn_stop);
+//        stop.setOnClickListener(new Button.OnClickListener()
+//        {
+//            public void onClick(View arg0) {
+//                stop_camera();
+//            }
+//        });
+        capture.setOnClickListener(new View.OnClickListener() {
+
+            @Override
+            public void onClick(View v) {
+                // TODO Auto-generated method stub
+                captureImage();
+            }
+        });
+
+        surfaceView = (SurfaceView)findViewById(R.id.surfaceView1);
+        surfaceHolder = surfaceView.getHolder();
+        surfaceHolder.addCallback(this);
+        surfaceHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
+        rawCallback = new Camera.PictureCallback() {
+            public void onPictureTaken(byte[] data, Camera camera) {
+                Log.d("Log", "onPictureTaken - raw");
+            }
+        };
+
+        /** Handles data for jpeg picture */
+        shutterCallback = new Camera.ShutterCallback() {
+            public void onShutter() {
+                Log.i("Log", "onShutter'd");
+            }
+        };
+        jpegCallback = new Camera.PictureCallback() {
+            public void onPictureTaken(byte[] data, Camera camera) {
+                FileOutputStream outStream = null;
+                String fileName = String.format("/sdcard/%d.jpg", System.currentTimeMillis());
+                try {
+                    File file = new File(fileName);
+                    outStream = new FileOutputStream(file);
+                    outStream.write(data);
+                    outStream.close();
+                    Log.d("Log", "onPictureTaken - wrote bytes: " + data.length);
+                    fileUri = Uri.fromFile(file);
+                    predictImage(fileUri.getPath());
+                    start_camera();
+
+                } catch (FileNotFoundException e) {
+                    e.printStackTrace();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } finally {
+                }
+                log.append("Picture Taken: " + fileName);
+
+            }
+        };
+
         b_start = (Button) findViewById(R.id.b_start);
         b_start.setText(s_b_start);
 
         t_email = (EditText) findViewById(R.id.t_email);
+
+//        ivCaptured = (ImageView) findViewById(R.id.ivCaptured);
+        tvLabel = (TextView) findViewById(R.id.tvLabel);
+
+//        btnCamera = (Button) findViewById(R.id.btnCamera);
+//        btnCamera.setOnClickListener(new Button.OnClickListener() {
+//            public void onClick(View v) {
+//                initPrediction();
+//                fileUri = getOutputMediaFileUri(MEDIA_TYPE_IMAGE);
+//                Intent i = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+//                i.putExtra(MediaStore.EXTRA_OUTPUT, fileUri);
+//                startActivityForResult(i, REQUEST_IMAGE_CAPTURE);
+//            }
+//        });
+
+        btnSelect = (Button) findViewById(R.id.btnSelect);
+        btnSelect.setOnClickListener(new Button.OnClickListener() {
+            public void onClick(View v) {
+                initPrediction();
+                Intent i = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+                startActivityForResult(i, REQUEST_IMAGE_SELECT);
+            }
+        });
+
+        caffeMobile = new CaffeMobile();
+        caffeMobile.setNumThreads(4);
+        caffeMobile.loadModel(modelProto, modelBinary);
+
+        float[] meanValues = {104, 117, 123};
+        caffeMobile.setMean(meanValues);
+
+        AssetManager am = this.getAssets();
+        try {
+            InputStream is = am.open("synset_words.txt");
+            Scanner sc = new Scanner(is);
+            List<String> lines = new ArrayList<String>();
+            while (sc.hasNextLine()) {
+                final String temp = sc.nextLine();
+                lines.add(temp.substring(temp.indexOf(" ") + 1));
+            }
+            IMAGENET_CLASSES = lines.toArray(new String[0]);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
 
         addListenersOnButtons();
 
@@ -203,8 +520,9 @@ public class MainActivity extends AppCompatActivity {
         {
             Thread.sleep(500);
         }
-        catch (InterruptedException e)
-        {}
+        catch (InterruptedException e) {
+            //todo correct catch o re throw
+        }
     }
 
     /*************************************************************************/
@@ -314,14 +632,15 @@ public class MainActivity extends AppCompatActivity {
                     }
                     if (!email1.equals(email)) {
                         email = email1;
-                        if (!save_one_string_file(path0+'/'+cemail, email)) {
-                            log.append("ERROR: can't find local configuration!");
+                        String pp=path0+'/'+cemail;
+                        if (!save_one_string_file(pp, email)) {
+                            log.append("ERROR: can't write local configuration ("+pp+"!");
                             return;
                         }
                     }
 
-                    CheckBox c_continuous = (CheckBox) findViewById(R.id.c_continuous);
-                    if (c_continuous.isChecked()) iterations = -1;
+//                    CheckBox c_continuous = (CheckBox) findViewById(R.id.c_continuous);
+//                    if (c_continuous.isChecked()) iterations = -1;
 
                     crowdTask = new runCodeAsync().execute("");
                 }
@@ -654,6 +973,7 @@ public class MainActivity extends AppCompatActivity {
              /*********** Printing local tmp directory **************/
              publishProgress(s_line);
              publishProgress("Local tmp directory: " + path + "\n");
+             publishProgress("User ID: " + email + "\n");
 
              /*********** Obtaining CK server **************/
              publishProgress(s_line);
@@ -2320,4 +2640,98 @@ public class MainActivity extends AppCompatActivity {
              return null;
          }
      }
+
+    private class CNNTask extends AsyncTask<String, Void, Integer> {
+        private CNNListener listener;
+        private long startTime;
+
+        public CNNTask(CNNListener listener) {
+            this.listener = listener;
+        }
+
+        @Override
+        protected Integer doInBackground(String... strings) {
+            startTime = SystemClock.uptimeMillis();
+            return caffeMobile.predictImage(strings[0])[0];
+        }
+
+        @Override
+        protected void onPostExecute(Integer integer) {
+            log.append(String.format("Elapsed wall time: %d ms", SystemClock.uptimeMillis() - startTime)  + "\n");
+
+            listener.onTaskCompleted(integer);
+            super.onPostExecute(integer);
+        }
+    }
+
+    @Override
+    public void onTaskCompleted(int result) {
+//        ivCaptured.setImageBitmap(bmp);
+        tvLabel.setText(IMAGENET_CLASSES[result]);
+        log.append("PREDICTION RESULT: " + IMAGENET_CLASSES[result] + "\n");
+//        btnCamera.setEnabled(true);
+        btnSelect.setEnabled(true);
+
+        if (dialog != null) {
+            dialog.dismiss();
+        }
+    }
+
+
+    private void predictImage(String imgPath) {
+
+        bmp = BitmapFactory.decodeFile(imgPath);
+        log.append( "Processing image path: " + imgPath + "\n");
+        log.append( "Processing image height: " + String.valueOf(bmp.getHeight()) + "\n");
+        log.append( "Processing image width: " + String.valueOf(bmp.getWidth()) + "\n");
+
+        dialog = ProgressDialog.show(MainActivity.this, "Predicting...", "Wait for one sec...", true);
+
+        CNNTask cnnTask = new CNNTask(MainActivity.this);
+        cnnTask.execute(imgPath);
+    }
+
+
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if ((requestCode == REQUEST_IMAGE_CAPTURE || requestCode == REQUEST_IMAGE_SELECT) && resultCode == RESULT_OK) {
+            String imgPath;
+
+            if (requestCode == REQUEST_IMAGE_CAPTURE) {
+                imgPath = fileUri.getPath();
+            } else {
+                Uri selectedImage = data.getData();
+                String[] filePathColumn = {MediaStore.Images.Media.DATA};
+                Cursor cursor = MainActivity.this.getContentResolver().query(selectedImage, filePathColumn, null, null, null);
+                cursor.moveToFirst();
+                int columnIndex = cursor.getColumnIndex(filePathColumn[0]);
+                imgPath = cursor.getString(columnIndex);
+                cursor.close();
+            }
+
+            bmp = BitmapFactory.decodeFile(imgPath);
+            log.append( "Processing image path: " + imgPath + "\n");
+            log.append( "Processing image height: " + String.valueOf(bmp.getHeight()) + "\n");
+            log.append( "Processing image width: " + String.valueOf(bmp.getWidth()) + "\n");
+
+            dialog = ProgressDialog.show(MainActivity.this, "Predicting...", "Wait for one sec...", true);
+
+            CNNTask cnnTask = new CNNTask(MainActivity.this);
+            cnnTask.execute(imgPath);
+        } else {
+//            btnCamera.setEnabled(true);
+            btnSelect.setEnabled(true);
+        }
+
+        super.onActivityResult(requestCode, resultCode, data);
+    }
+
+
+    private void initPrediction() {
+//        btnCamera.setEnabled(false);
+        btnSelect.setEnabled(false);
+        tvLabel.setText("");
+    }
+
 }

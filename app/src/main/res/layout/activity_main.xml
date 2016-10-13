@@ -72,7 +72,7 @@
         android:layout_width="wrap_content"
         android:minHeight="12dp"
         android:layout_height="wrap_content"
-        android:text="capture"
+        android:text="Recognize"
         android:layout_below="@+id/surfaceView1"
         android:layout_alignTop="@+id/btn_start"
         android:layout_toRightOf="@+id/btn_start"

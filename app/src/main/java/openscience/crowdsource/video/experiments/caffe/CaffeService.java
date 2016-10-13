@@ -1,4 +1,4 @@
-package openscience.crowdsource.experiments.caffe;
+package openscience.crowdsource.video.experiments.caffe;
 
 /**
  * Created by daniil on 10/11/16.

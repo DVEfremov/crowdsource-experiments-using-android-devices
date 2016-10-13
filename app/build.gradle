@@ -5,7 +5,7 @@ android {
     buildToolsVersion "23.0.2"
 
     defaultConfig {
-        applicationId "openscience.crowdsource.experiments"
+        applicationId "openscience.crowdsource.video.experiments"
         minSdkVersion 10
         targetSdkVersion 22
         versionCode 9

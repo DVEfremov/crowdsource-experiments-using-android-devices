@@ -1,4 +1,4 @@
-package openscience.crowdsource.experiments;
+package openscience.crowdsource.video.experiments;
 
 import org.junit.Test;
 

@@ -14,7 +14,7 @@
 
 */
 
-package openscience.crowdsource.experiments;
+package openscience.crowdsource.video.experiments;
 
 
 import android.app.Activity;
@@ -44,7 +44,6 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
-import android.widget.VideoView;
 
 import com.sh1r0.caffe_android_demo.CNNListener;
 import com.sh1r0.caffe_android_lib.CaffeMobile;
@@ -129,9 +128,6 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
 
     private Button btnSelect;
 
-//    private ImageView ivCaptured;
-    private VideoView videoPreview;
-
     private TextView tvLabel;
     private ProgressDialog dialog;
     private Bitmap bmp;
@@ -215,6 +211,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
     }
 
     Camera camera;
+    boolean isCameraStarted = false;
     SurfaceView surfaceView;
     SurfaceHolder surfaceHolder;
     Camera.PictureCallback rawCallback;
@@ -222,82 +219,17 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
     Camera.PictureCallback jpegCallback;
     private final String tag = "VideoServer";
 
-    Button start, capture;
-//    Button stop;
+    Button startStopCam, capture;
 
-
-    /** Called when the activity is first created. */
-    public void onCreate2(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-
-        start = (Button)findViewById(R.id.btn_start);
-        start.setOnClickListener(new Button.OnClickListener()
-        {
-            public void onClick(View arg0) {
-                start_camera();
-            }
-        });
-        capture = (Button) findViewById(R.id.capture);
-
-//        stop = (Button)findViewById(R.id.btn_stop);
-//        stop.setOnClickListener(new Button.OnClickListener()
-//        {
-//            public void onClick(View arg0) {
-//                stop_camera();
-//            }
-//        });
-        capture.setOnClickListener(new View.OnClickListener() {
-
-            @Override
-            public void onClick(View v) {
-                // TODO Auto-generated method stub
-                captureImage();
-            }
-        });
-
-        surfaceView = (SurfaceView)findViewById(R.id.surfaceView1);
-        surfaceHolder = surfaceView.getHolder();
-        surfaceHolder.addCallback(this);
-        surfaceHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
-        rawCallback = new Camera.PictureCallback() {
-            public void onPictureTaken(byte[] data, Camera camera) {
-                Log.d("Log", "onPictureTaken - raw");
-            }
-        };
-
-        /** Handles data for jpeg picture */
-        shutterCallback = new Camera.ShutterCallback() {
-            public void onShutter() {
-                Log.i("Log", "onShutter'd");
-            }
-        };
-        jpegCallback = new Camera.PictureCallback() {
-            public void onPictureTaken(byte[] data, Camera camera) {
-                FileOutputStream outStream = null;
-                try {
-                    outStream = new FileOutputStream(String.format(
-                            "/sdcard/%d.jpg", System.currentTimeMillis()));
-                    outStream.write(data);
-                    outStream.close();
-                    Log.d("Log", "onPictureTaken - wrote bytes: " + data.length);
-                } catch (FileNotFoundException e) {
-                    e.printStackTrace();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                } finally {
-                }
-                Log.d("Log", "onPictureTaken - jpeg");
-            }
-        };
-    }
-
-    private void captureImage() {
+    private void captureImageFromCameraPreview() {
         // TODO Auto-generated method stub
+        if (!isCameraStarted) {
+            startCameraPreview();
+        }
         camera.takePicture(shutterCallback, rawCallback, jpegCallback);
     }
 
-    private void start_camera()
+    private void startCameraPreview()
     {
         try{
             camera = Camera.open();
@@ -310,8 +242,10 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
         //modify parameter
         param.setPreviewFrameRate(20);
         param.setPreviewSize(176, 144);
+        param.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO);
         camera.setParameters(param);
         try {
+            camera.setDisplayOrientation(90);
             camera.setPreviewDisplay(surfaceHolder);
             camera.startPreview();
             //camera.takePicture(shutter, raw, jpeg)
@@ -319,12 +253,13 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
             Log.e(tag, "init_camera: " + e);
             return;
         }
+        isCameraStarted = true;
     }
 
-    private void stop_camera()
-    {
+    private void stopCameraPreview() {
         camera.stopPreview();
         camera.release();
+        isCameraStarted = false;
     }
 
     public void surfaceChanged(SurfaceHolder arg0, int arg1, int arg2, int arg3) {
@@ -339,8 +274,6 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
         // TODO Auto-generated method stub
     }
 
-
-
     /*************************************************************************/
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -348,27 +281,24 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
         setContentView(R.layout.activity_main);
 
 
-        start = (Button)findViewById(R.id.btn_start);
-        start.setOnClickListener(new Button.OnClickListener()
+        startStopCam = (Button)findViewById(R.id.btn_start);
+        startStopCam.setOnClickListener(new Button.OnClickListener()
         {
             public void onClick(View arg0) {
-                start_camera();
+                if (!isCameraStarted) {
+                    startCameraPreview();
+                } else {
+                    stopCameraPreview();
+                }
             }
         });
         capture = (Button) findViewById(R.id.capture);
-//        stop = (Button)findViewById(R.id.btn_stop);
-//        stop.setOnClickListener(new Button.OnClickListener()
-//        {
-//            public void onClick(View arg0) {
-//                stop_camera();
-//            }
-//        });
         capture.setOnClickListener(new View.OnClickListener() {
 
             @Override
             public void onClick(View v) {
                 // TODO Auto-generated method stub
-                captureImage();
+                captureImageFromCameraPreview();
             }
         });
 
@@ -400,7 +330,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
                     Log.d("Log", "onPictureTaken - wrote bytes: " + data.length);
                     fileUri = Uri.fromFile(file);
                     predictImage(fileUri.getPath());
-                    start_camera();
+                    startCameraPreview();
 
                 } catch (FileNotFoundException e) {
                     e.printStackTrace();
@@ -418,19 +348,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
 
         t_email = (EditText) findViewById(R.id.t_email);
 
-//        ivCaptured = (ImageView) findViewById(R.id.ivCaptured);
         tvLabel = (TextView) findViewById(R.id.tvLabel);
-
-//        btnCamera = (Button) findViewById(R.id.btnCamera);
-//        btnCamera.setOnClickListener(new Button.OnClickListener() {
-//            public void onClick(View v) {
-//                initPrediction();
-//                fileUri = getOutputMediaFileUri(MEDIA_TYPE_IMAGE);
-//                Intent i = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-//                i.putExtra(MediaStore.EXTRA_OUTPUT, fileUri);
-//                startActivityForResult(i, REQUEST_IMAGE_CAPTURE);
-//            }
-//        });
 
         btnSelect = (Button) findViewById(R.id.btnSelect);
         btnSelect.setOnClickListener(new Button.OnClickListener() {

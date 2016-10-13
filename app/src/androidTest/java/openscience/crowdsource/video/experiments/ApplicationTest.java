@@ -1,4 +1,4 @@
-package openscience.crowdsource.experiments;
+package openscience.crowdsource.video.experiments;
 
 import android.app.Application;
 import android.test.ApplicationTestCase;

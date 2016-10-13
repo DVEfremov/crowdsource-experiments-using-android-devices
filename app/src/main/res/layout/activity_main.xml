@@ -83,7 +83,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:minHeight="14dp"
-        android:text="Start cam"
+        android:text="Start/Stop"
         android:layout_below="@+id/surfaceView1"
         android:layout_alignParentLeft="true"
         android:layout_alignParentStart="true" />
@@ -94,44 +94,14 @@
         android:layout_height="wrap_content"
         android:layout_below="@+id/surfaceView1"
         android:layout_alignParentRight="true"
-
+        android:minHeight="14dp"
         android:text="Select an image" />
-
-    <!--<Button-->
-        <!--android:id="@+id/btn_stop"-->
-        <!--android:layout_width="wrap_content"-->
-        <!--android:layout_height="wrap_content"-->
-        <!--android:layout_below="@+id/surfaceView1"-->
-        <!--android:layout_alignParentRight="true"-->
-
-        <!--android:text="Stop cam" />-->
-
-
-    <!--<Button-->
-        <!--android:id="@+id/btnCamera"-->
-        <!--android:layout_width="wrap_content"-->
-        <!--android:layout_height="wrap_content"-->
-        <!--android:layout_below="@+id/b_stats"-->
-        <!--android:layout_alignParentLeft="true"-->
-        <!--android:text="Take a photo" />-->
-
-
-
 
     <TextView
         android:id="@+id/tvLabel"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_below="@+id/b_start"/>
-
-    <!--<ImageView-->
-        <!--android:id="@+id/ivCaptured"-->
-        <!--android:layout_width="match_parent"-->
-        <!--android:layout_height="200dp"-->
-        <!--android:layout_below="@+id/tvLabel"-->
-        <!--android:layout_alignParentLeft="true"-->
-        <!--android:layout_alignParentRight="true" />-->
-
 
     <SurfaceView
         android:id="@+id/surfaceView1"
@@ -140,31 +110,6 @@
         android:layout_below="@+id/tvLabel"
         android:layout_alignParentLeft="true"
         android:layout_alignParentRight="true" />
-
-    <!--<FrameLayout-->
-        <!--android:layout_width="match_parent"-->
-        <!--android:layout_height="match_parent"-->
-        <!--android:layout_below="@+id/btnSelect"-->
-
-        <!--android:id="@+id/camera_preview">-->
-
-        <!--<Button-->
-            <!--android:layout_width="wrap_content"-->
-            <!--android:layout_height="wrap_content"-->
-            <!--android:text="btn_capture"-->
-            <!--android:id="@+id/btn_capture"-->
-            <!--android:layout_gravity="center_horizontal|bottom" />-->
-    <!--</FrameLayout>-->
-
-
-    <!--<LinearLayout-->
-        <!--android:id="@+id/widget34"-->
-        <!--android:layout_width="wrap_content"-->
-        <!--android:layout_height="500px"-->
-        <!--android:orientation="vertical"-->
-        <!--android:layout_below="@+id/ivCaptured"-->
-        <!--android:layout_centerHorizontal="true">-->
-
 
     <EditText
         android:id="@+id/log"
@@ -186,7 +131,7 @@
         android:layout_alignParentEnd="true"
         android:layout_above="@+id/b_clean"
         android:nestedScrollingEnabled="false" />
-    <!--</LinearLayout>-->
+
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -208,60 +153,5 @@
         android:layout_toLeftOf="@+id/b_stats"
         android:layout_toStartOf="@+id/b_stats"
         android:layout_alignBottom="@+id/b_stats" />
-
-
-
-
-    <LinearLayout
-        android:layout_width="0dp"
-        android:layout_height="fill_parent"
-        android:layout_weight="1"
-        android:gravity="center"
-        android:orientation="vertical" >
-
-        <!-- Capture picture button -->
-        <Button
-            android:id="@+id/btnCapturePicture"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Take a Picture"
-            android:layout_marginBottom="10dp"/>
-
-        <!-- Record video button -->
-        <Button
-            android:id="@+id/btnRecordVideo"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Record a Video" />
-    </LinearLayout>
-
-    <LinearLayout
-        android:layout_width="0dp"
-        android:layout_height="fill_parent"
-        android:layout_weight="1"
-        android:orientation="vertical"
-        android:padding="10dp">
-
-        <TextView
-            android:layout_width="fill_parent"
-            android:layout_height="wrap_content"
-            android:text="Preview"
-            android:padding="10dp"
-            android:textSize="15dp"/>
-
-        <!-- To display picture taken -->
-        <ImageView
-            android:id="@+id/imgPreview"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:visibility="gone" />
-
-        <!-- To preview video recorded -->
-        <VideoView
-            android:id="@+id/videoPreview"
-            android:layout_width="wrap_content"
-            android:layout_height="400dp"
-            android:visibility="gone" />
-    </LinearLayout>
 
 </RelativeLayout>

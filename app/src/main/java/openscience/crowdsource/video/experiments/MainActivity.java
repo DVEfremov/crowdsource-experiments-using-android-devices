@@ -62,6 +62,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.net.URL;
 import java.net.URLConnection;
@@ -83,24 +84,16 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
     private static final int REQUEST_IMAGE_SELECT = 200;
     public static final int MEDIA_TYPE_IMAGE = 1;
 
-    String welcome = "We would like to thank you for participating in experiment crowdsourcing " +
-            "to collaboratively solve complex problems!\n\n" +
-            "One of the available scenarios is collaborative optimization of computer systems: " +
-            "computers become very inefficient and it is not uncommon to get 10x speedups, " +
-            " 2x size reduction and 40% energy reductions"+
-            " for popular algorithms (DNN, vision, BLAS) - see \"About\". "+
-            "We have developed collaborative scenario to crowdsource program autotuning" +
-            " across various Android mobile devices and apply machine learning" +
-            " to predict optimal optimizations!\n\n"+
-            "NOTE: we strongly suggest you to have an access to unlimited internet"+
-            " to download differently optimized kernels with various data sets,"+
-            " run them on your mobile device, and send execution statistics back" +
-            " to a public Collective Knowledge Server!\n\n"+
-            "We would like to sincerely thank you for supporting our reproducible and open science initiatives" +
-            " and helping us optimize computer systems to accelerate knowledge discovery," +
-            " boost innovation in science and technology, and make our planet greener!\n\n";
+    String welcome = "This application let you participate in experiment crowdsourcing " +
+            "to collaboratively solve complex problems! " +
+            "For example, you can help optimize and tune a popular Caffe CNN image recognition library "+
+            "via Collective Knowledge framework!\n\n" +
+            "NOTE: you should have an unlimited Internet since some scenario may require to download 300Mb+ code and datasets! " +
+            "Also note that this app may send some anonymized statistics about your platform and code execution " +
+            "(performance, accuracy, power consumption, cost, etc) to a public CK server at cknowledge.org/repo "+
+            "to let the community improve algorithms for diverse hardware!\n\n ";
 
-    String problem="maybe it is overloaded or down! We hope to get some sponsorship soon to move our old CK server to the cloud! In the mean time, please contact the author (Grigori.Fursin@cTuning.org) about this problem!";
+    String problem="maybe be overloaded or down! Please report this problem to Grigori.Fursin@cTuning.org!";
 
     String path_opencl="/system/vendor/lib/libOpenCL.so";
 
@@ -115,7 +108,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
     String url_cserver="http://cTuning.org/shared-computing-resources-json/ck.json";
     String repo_uoa="upload";
 
-    String s_b_start = "Start";
+    String s_b_start = "Update";
     String s_b_stop = "Exit";
 
     String s_thanks = "Thank you for participation!\n";
@@ -141,15 +134,15 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
     String modelProto = modelDir + "/deploy.prototxt";
     String modelBinary = modelDir + "/bvlc_reference_caffenet.caffemodel";
 
-    static {
-        System.loadLibrary("caffe");
-        System.loadLibrary("caffe_jni");
-    }
+    //static {
+    //    System.loadLibrary("caffe");
+    //    System.loadLibrary("caffe_jni");
+    //}
 
     private static String[] IMAGENET_CLASSES;
 
     String cemail="email.txt";
-    String path1="ck-crowdtuning";
+    String path1="ck-crowd";
 
     private AsyncTask crowdTask = null;
     Boolean running = false;
@@ -240,9 +233,10 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
         Camera.Parameters param;
         param = camera.getParameters();
         //modify parameter
-        param.setPreviewFrameRate(20);
-        param.setPreviewSize(176, 144);
-        param.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO);
+//        param.setPreviewFrameRate(20);
+//        param.setPreviewSize(176, 144);
+        param.setPreviewSize(32, 24);
+//        param.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO);
         camera.setParameters(param);
         try {
             camera.setDisplayOrientation(90);
@@ -359,7 +353,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
             }
         });
 
-        caffeMobile = new CaffeMobile();
+        /*caffeMobile = new CaffeMobile();
         caffeMobile.setNumThreads(4);
         caffeMobile.loadModel(modelProto, modelBinary);
 
@@ -379,7 +373,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
         } catch (IOException e) {
             e.printStackTrace();
         }
-
+        */
 
         addListenersOnButtons();
 
@@ -838,6 +832,23 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
                 s+="/?";
 
             return s;
+        }
+
+        /*************************************************************************/
+        public void copy_bin_file(String src, String dst) throws IOException {
+            File fin = new File(src);
+            File fout = new File(dst);
+
+            InputStream in = new FileInputStream(fin);
+            OutputStream out = new FileOutputStream(fout);
+
+            // Transfer bytes from in to out
+            int l=0;
+            byte[] buf = new byte[16384];
+            while ((l = in.read(buf)) > 0) out.write(buf, 0, l);
+
+            in.close();
+            out.close();
         }
 
          /*************************************************************************/
@@ -1651,6 +1662,80 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
                  Thread.sleep(1000);
              } catch(InterruptedException ex) {
              }
+
+
+
+
+             String path00="/sdcard";
+             //String path00="/storage/sdcard1";
+
+             String pathZ=path00+"/openscience/code/0ef2b70e4791b83b/arm64-v8a";
+             String pathC=path00+"/openscience/code/6fa68c1b9805d268/arm64-v8a";
+             String pathD=path00+"/openscience/data/4a6e91d75d682cec";
+
+             publishProgress("\nBB="+path00+"\n\n");
+
+             try {
+//                 copy_bin_file(pathX+"/a.out", path+"/a.out");
+//                 copy_bin_file(pathX+"/librtlxopenme.so", path+"/librtlxopenme.so");
+                 copy_bin_file(pathC+"/classification", path+"/classification");
+                 copy_bin_file(pathC+"/caffe", path+"/caffe");
+//                 copy_bin_file(pathZ+"/libcaffe.so", path+"/libcaffe.so");
+             } catch (IOException e) {
+                 e.printStackTrace();
+                 return null;
+             }
+
+             String[] retB=openme.openme_run_program(chmod744+" "+path+"/classification", null, path);
+             publishProgress("\nB0="+retB[0]+"\n\n");
+             publishProgress("\nB1="+retB[1]+"\n\n");
+             publishProgress("\nB2="+retB[2]+"\n\n");
+
+             retB=openme.openme_run_program(chmod744+" "+path+"/caffe", null, path);
+             publishProgress("\nB0="+retB[0]+"\n\n");
+             publishProgress("\nB1="+retB[1]+"\n\n");
+             publishProgress("\nB2="+retB[2]+"\n\n");
+
+             retB=openme.openme_run_program("ls -l", null, path);
+             publishProgress("\nB0="+retB[0]+"\n\n");
+             publishProgress("\nB1="+retB[1]+"\n\n");
+             publishProgress("\nB2="+retB[2]+"\n\n");
+
+             String[] envA={"CT_REPEAT_MAIN="+String.valueOf(1), "LD_LIBRARY_PATH="+pathZ+":$LD_LIBRARY_PATH"};
+             String cmdA="./classification "+pathD+"/topology/deploy.prototxt "+
+                     pathD+"/model/bvlc_reference_caffenet.caffemodel "+
+                     pathD+"/mean/imagenet_mean.binaryproto "+
+                     pathD+"/labels/synset_words.txt "+
+                     pathD+"/demo/mouse.jpg";
+
+             String[] retA=openme.openme_run_program(cmdA, envA, path);
+             publishProgress("\nX0="+retA[0]+"\n\n");
+             publishProgress("\nX1="+retA[1]+"\n\n");
+             publishProgress("\nX2="+retA[2]+"\n\n");
+
+             //Delay program for 1 sec
+             try {
+                 Thread.sleep(1000);
+             } catch(InterruptedException ex) {
+             }
+
+
+
+
+             //Delay program for 1 sec
+             try {
+                 Thread.sleep(1000);
+             } catch(InterruptedException ex) {
+             }
+
+             if (rr==0) return null; // force quit for now
+
+
+
+
+
+
+
 
              /*********** Starting iterations **************/
              int iter=0;

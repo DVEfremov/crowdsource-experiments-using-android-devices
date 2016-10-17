@@ -114,7 +114,8 @@ public class openme
 
        Output: string list:
                  [0] - error text
-                 [1] - command output
+                 [1] - stdout output
+                 [2] - stderr output
     */
 
         File dir=null;
@@ -122,6 +123,7 @@ public class openme
 
         Process p=null;
         String output="";
+        String eoutput="";
         String err="";
 
         try
@@ -131,9 +133,16 @@ public class openme
             BufferedReader reader=new BufferedReader(
                     new InputStreamReader(p.getInputStream()));
 
+            BufferedReader stderr = new BufferedReader(
+                    new InputStreamReader(p.getErrorStream()));
+
+
             String line=null;
             while ((line = reader.readLine())!=null)
                 output+=line+'\n';
+
+            while ((line = stderr.readLine())!=null)
+                eoutput+=line+'\n';
 
             reader.close();
             p.waitFor();
@@ -157,7 +166,7 @@ public class openme
             }
         }
 
-        return new String[] {err, output};
+        return new String[] {err, output, eoutput};
     }
 
     // *******************************************************************

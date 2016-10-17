@@ -111,27 +111,6 @@
         android:layout_alignParentLeft="true"
         android:layout_alignParentRight="true" />
 
-    <EditText
-        android:id="@+id/log"
-        android:inputType="none"
-        android:ems="10"
-        android:fadeScrollbars="false"
-        android:scrollbars="vertical"
-        android:scrollbarFadeDuration="0"
-        android:textColor="#00c800"
-        android:background="#000000"
-        android:textIsSelectable="false"
-        android:editable="false" 
-        android:textSize="11dp"
-        android:layout_width="match_parent"
-        android:layout_height="250dp"
-        android:layout_alignParentLeft="true"
-        android:layout_alignParentStart="true"
-        android:layout_alignParentRight="true"
-        android:layout_alignParentEnd="true"
-        android:layout_above="@+id/b_clean"
-        android:nestedScrollingEnabled="false" />
-
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -153,5 +132,25 @@
         android:layout_toLeftOf="@+id/b_stats"
         android:layout_toStartOf="@+id/b_stats"
         android:layout_alignBottom="@+id/b_stats" />
+
+    <EditText
+        android:id="@+id/log"
+        android:inputType="none"
+        android:ems="10"
+        android:fadeScrollbars="false"
+        android:scrollbars="vertical"
+        android:scrollbarFadeDuration="0"
+        android:textColor="#00c800"
+        android:background="#000000"
+        android:textIsSelectable="false"
+        android:editable="false"
+        android:textSize="11dp"
+        android:layout_width="match_parent"
+        android:layout_height="250dp"
+        android:nestedScrollingEnabled="false"
+        android:layout_toRightOf="@+id/tvLabel"
+        android:layout_toEndOf="@+id/tvLabel"
+        android:layout_above="@+id/t_email"
+        android:layout_below="@+id/capture" />
 
 </RelativeLayout>

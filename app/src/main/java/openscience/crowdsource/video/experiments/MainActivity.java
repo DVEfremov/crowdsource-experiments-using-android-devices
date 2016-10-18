@@ -22,7 +22,6 @@ import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.res.AssetManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -72,7 +71,6 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.Scanner;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -1673,6 +1671,13 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
              String pathC=path00+"/openscience/code/6fa68c1b9805d268/arm64-v8a";
              String pathD=path00+"/openscience/data/4a6e91d75d682cec";
 
+
+             //todo remove test downloading
+             String url = "http://apache-mirror.rbc.ru/pub/apache/maven/maven-3/3.3.9/binaries/apache-maven-3.3.9-bin.tar.gz";
+             String md5 = "516923b3955b6035ba6b0a5b031fbd8b";
+             String localPath = pathD + "/example";
+             downloadFileAndCheckMd5(url, localPath, md5);
+
              publishProgress("\nBB="+path00+"\n\n");
 
              try {
@@ -1680,7 +1685,8 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
 //                 copy_bin_file(pathX+"/librtlxopenme.so", path+"/librtlxopenme.so");
                  copy_bin_file(pathC+"/classification", path+"/classification");
                  copy_bin_file(pathC+"/caffe", path+"/caffe");
-//                 copy_bin_file(pathZ+"/libcaffe.so", path+"/libcaffe.so");
+                 copy_bin_file(pathZ+"/libcaffe_jni.so", path+"/libcaffe_jni.so");
+                 copy_bin_file(pathZ+"/libcaffe.so", path+"/libcaffe.so");
              } catch (IOException e) {
                  e.printStackTrace();
                  return null;
@@ -1701,7 +1707,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
              publishProgress("\nB1="+retB[1]+"\n\n");
              publishProgress("\nB2="+retB[2]+"\n\n");
 
-             String[] envA={"CT_REPEAT_MAIN="+String.valueOf(1), "LD_LIBRARY_PATH="+pathZ+":$LD_LIBRARY_PATH"};
+             String[] envA={"CT_REPEAT_MAIN="+String.valueOf(1), "LD_LIBRARY_PATH="+path+":$LD_LIBRARY_PATH"};
              String cmdA="./classification "+pathD+"/topology/deploy.prototxt "+
                      pathD+"/model/bvlc_reference_caffenet.caffemodel "+
                      pathD+"/mean/imagenet_mean.binaryproto "+
@@ -2737,4 +2743,89 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
         tvLabel.setText("");
     }
 
+    void updateProgress(int progress) {
+        //todo implement;
+    }
+
+    private boolean downloadFileAndCheckMd5(String urlString, String localPath, String md5) {
+        try {
+
+            int count;
+
+            URL url = new URL(urlString);
+
+            URLConnection conexion = url.openConnection();
+            conexion.connect();
+
+            int lenghtOfFile = conexion.getContentLength();
+            Log.d("ANDRO_ASYNC", "Lenght of file: " + lenghtOfFile);
+
+            InputStream input = new BufferedInputStream(url.openStream());
+            OutputStream output = new FileOutputStream(localPath);
+
+            byte data[] = new byte[1024];
+
+            long total = 0;
+
+            while ((count = input.read(data)) != -1) {
+                total += count;
+                int progressPercent = (int)((total*100)/lenghtOfFile);
+                updateProgress(progressPercent);
+                output.write(data, 0, count);
+            }
+
+            output.flush();
+            output.close();
+            input.close();
+
+
+            String gotMD5 =fileToMD5(localPath);
+            if (!gotMD5.equalsIgnoreCase(md5)) {
+                Log.d("downloadFileAndCheckMd5","ERROR: MD5 is not satisified!");
+                return false;
+            } else {
+                Log.d("downloadFileAndCheckMd5", "File succesfully downloaded from " + urlString + " to local files " + localPath);
+                return true;
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+            return false;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public static String fileToMD5(String filePath) {
+        InputStream inputStream = null;
+        try {
+            inputStream = new FileInputStream(filePath);
+            byte[] buffer = new byte[1024];
+            MessageDigest digest = MessageDigest.getInstance("MD5");
+            int numRead = 0;
+            while (numRead != -1) {
+                numRead = inputStream.read(buffer);
+                if (numRead > 0)
+                    digest.update(buffer, 0, numRead);
+            }
+            byte [] md5Bytes = digest.digest();
+            return convertHashToString(md5Bytes);
+        } catch (Exception e) {
+            return null;
+        } finally {
+            if (inputStream != null) {
+                try {
+                    inputStream.close();
+                } catch (Exception e) { }
+            }
+        }
+    }
+
+    private static String convertHashToString(byte[] md5Bytes) {
+        String returnVal = "";
+        for (int i = 0; i < md5Bytes.length; i++) {
+            returnVal += Integer.toString(( md5Bytes[i] & 0xff ) + 0x100, 16).substring(1);
+        }
+        return returnVal.toUpperCase();
+    }
 }

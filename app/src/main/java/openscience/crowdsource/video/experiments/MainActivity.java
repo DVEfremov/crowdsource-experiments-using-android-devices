@@ -1,12 +1,10 @@
 /*
 
-# Crowdsourcing experiments using mobile devices
+#  video experiments using mobile devices
 # provided by volunteers
-# (current scenario: program multi-objective crowdtuning
-# and SW/HW co-design)
 #
-# (C)opyright, Grigori Fursin and non-profit cTuning foundation
-# 2015-2016
+# (C)opyright, cTuning foundation
+# 2016
 # BSD 3-clause license
 #
 # Powered by Collective Knowledge
@@ -15,7 +13,6 @@
 */
 
 package openscience.crowdsource.video.experiments;
-
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -84,11 +81,11 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
 
     String welcome = "This application let you participate in experiment crowdsourcing " +
             "to collaboratively solve complex problems! " +
-            "For example, you can help optimize and tune a popular Caffe CNN image recognition library "+
-            "via Collective Knowledge framework!\n\n" +
+            "Please, press 'Update' button to obtain shared scenarios such as " +
+            "collaborative benchmarking, optimization and tuning of a popular Caffe CNN image recognition library!\n"+
             "NOTE: you should have an unlimited Internet since some scenario may require to download 300Mb+ code and datasets! " +
-            "Also note that this app may send some anonymized statistics about your platform and code execution " +
-            "(performance, accuracy, power consumption, cost, etc) to a public CK server at cknowledge.org/repo "+
+            "Also some anonymized statistics will be collected about your platform and code execution " +
+            "(performance, accuracy, power consumption, cost, etc) at cknowledge.org/repo "+
             "to let the community improve algorithms for diverse hardware!\n\n ";
 
     String problem="maybe be overloaded or down! Please report this problem to Grigori.Fursin@cTuning.org!";
@@ -1660,6 +1657,98 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
                  Thread.sleep(1000);
              } catch(InterruptedException ex) {
              }
+
+             // Sending request to CK server to obtain available scenarios
+             /*######################################################################################################*/
+             publishProgress("\n    Sending request to CK server to obtain available collaborative experiment scenarios for your mobile device ...\n\n");
+
+             ii = new JSONObject();
+             try {
+                 ft = new JSONObject();
+
+                 ft.put("cpu",ft_cpu);
+                 ft.put("cpu_uid", j_cpu_uid);
+                 ft.put("cpu_uoa", j_cpu_uid);
+
+                 ft.put("gpu", ft_gpu);
+                 ft.put("gpu_uid",j_gpu_uid);
+                 ft.put("gpu_uoa",j_gpu_uid);
+
+                 // Need to tell CK server if OpenCL present
+                 // for collaborative OpenCL optimization using mobile devices
+                 JSONObject ft_gpu_misc = new JSONObject();
+                 ft_gpu_misc.put("opencl_lib_present", pf_gpu_openclx);
+                 ft.put("gpu_misc", ft_gpu_misc);
+
+                 ft.put("os",ft_os);
+                 ft.put("os_uid",j_os_uid);
+                 ft.put("os_uoa",j_os_uid);
+
+                 ft.put("platform",ft_plat);
+                 ft.put("platform_uid",j_sys_uid);
+                 ft.put("platform_uoa",j_sys_uid);
+
+                 ii.put("remote_server_url", curl);
+                 ii.put("action", "get");
+                 ii.put("module_uoa", "experiment.scenario.mobile");
+                 ii.put("email", email);
+                 ii.put("platform_features", ft);
+                 ii.put("out", "json");
+             } catch (JSONException e) {
+                 publishProgress("\nError with JSONObject ...\n\n");
+                 return null;
+             }
+
+             try {
+                 r = openme.remote_access(ii);
+             } catch (JSONException e) {
+                 publishProgress("\nError calling OpenME interface (" + e.getMessage() + ") ...\n\n");
+                 return null;
+             }
+
+             rr = 0;
+             if (!r.has("return")) {
+                 publishProgress("\nError obtaining key 'return' from OpenME output ...\n\n");
+                 return null;
+             }
+
+             try {
+                 Object rx=r.get("return");
+                 if (rx instanceof String) rr=Integer.parseInt((String)rx);
+                 else rr=(Integer)rx;
+             } catch (JSONException e) {
+                 publishProgress("\nError obtaining key 'return' from OpenME output (" + e.getMessage() + ") ...\n\n");
+                 return null;
+             }
+
+             if (rr > 0) {
+                 String err = "";
+                 try {
+                     err = (String) r.get("error");
+                 } catch (JSONException e) {
+                     publishProgress("\nError obtaining key 'error' from OpenME output (" + e.getMessage() + ") ...\n\n");
+                     return null;
+                 }
+
+//                     if (err.length()>256) err=err.substring(0,255) + " ...";
+                 publishProgress("\nProblem at CK server: " + err + "\n");
+                 return null;
+             }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

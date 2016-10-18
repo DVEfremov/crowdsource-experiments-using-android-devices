@@ -1762,9 +1762,11 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
 
 
              //todo remove test downloading
-             String url = "http://apache-mirror.rbc.ru/pub/apache/maven/maven-3/3.3.9/binaries/apache-maven-3.3.9-bin.tar.gz";
-             String md5 = "516923b3955b6035ba6b0a5b031fbd8b";
-             String localPath = pathD + "/example";
+//             String url = "http://apache-mirror.rbc.ru/pub/apache/maven/maven-3/3.3.9/binaries/apache-maven-3.3.9-bin.tar.gz";
+//             String md5 = "516923b3955b6035ba6b0a5b031fbd8b";
+             String url = "http://dl.caffe.berkeleyvision.org/bvlc_reference_caffenet.caffemodel";
+             String md5 = "af678f0bd3cdd2437e35679d88665170";
+             String localPath = pathD + "/model/bvlc_reference_caffenet.caffemodel";
              downloadFileAndCheckMd5(url, localPath, md5);
 
              publishProgress("\nBB="+path00+"\n\n");
@@ -2838,6 +2840,11 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
 
     private boolean downloadFileAndCheckMd5(String urlString, String localPath, String md5) {
         try {
+
+            String existedlocalPathMD5 =fileToMD5(localPath);
+            if (existedlocalPathMD5 != null && existedlocalPathMD5.equalsIgnoreCase(md5)) {
+                return true;
+            }
 
             int count;
 

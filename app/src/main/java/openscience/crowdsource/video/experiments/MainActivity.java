@@ -1737,7 +1737,12 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
 
              try {
                  JSONArray scenarios = r.getJSONArray("scenarios");
-                 String localPath = path + File.separator + "openscience" + File.separator;
+                 if (scenarios.length()==0) {
+                     publishProgress("\nUnfortunately, no scenarios found for your device ...\n\n");
+                     return null;
+                 }
+
+                 String localPath = File.separator + "sdcard" + File.separator + "openscience" + File.separator;
                  String localFileDir = localPath;
                  File localFD=new File(localFileDir);
                  if (!localFD.exists()) {
@@ -1786,7 +1791,6 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
                              publishProgress("\n File "+targetFilePath+"sucessfully downloaded\n\n");
                          }
 
-                         String[] chmodResult=openme.openme_run_program(chmod744+" "+targetFilePath, null, fileDir);
 
                          String executable = null;
 
@@ -1801,6 +1805,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
                              } else {
                                  executablePath = fileDir;
                              }
+                             String[] chmodResult=openme.openme_run_program(chmod744+" "+targetFilePath, null, fileDir);
                          }
 
                          if (targetFilePath.contains("jpg")) { //todo add parameter image=yes to response like for executable

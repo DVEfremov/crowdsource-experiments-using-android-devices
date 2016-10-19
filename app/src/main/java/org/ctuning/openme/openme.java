@@ -126,8 +126,7 @@ public class openme
         String eoutput="";
         String err="";
 
-        try
-        {
+        try {
             p=Runtime.getRuntime().exec(cmd,env,dir);
 
             BufferedReader reader=new BufferedReader(
@@ -145,23 +144,19 @@ public class openme
                 eoutput+=line+'\n';
 
             reader.close();
+            stderr.close();
             p.waitFor();
-        }
-        catch(Exception e)
-        {
+        } catch(Exception e) {
             err=e.toString();
         }
 
-        if (p!=null)
-        {
-            try
-            {
+        if (p!=null) {
+            try {
                 p.getOutputStream().close();
                 p.getInputStream().close();
                 p.getErrorStream().close();
             }
-            catch (IOException e)
-            {
+            catch (IOException e) {
                 err=e.toString();
             }
         }

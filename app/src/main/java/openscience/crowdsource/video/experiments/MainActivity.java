@@ -45,6 +45,7 @@ import com.sh1r0.caffe_android_demo.CNNListener;
 import com.sh1r0.caffe_android_lib.CaffeMobile;
 
 import org.ctuning.openme.openme;
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -1730,94 +1731,123 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
                      return null;
                  }
 
-//                     if (err.length()>256) err=err.substring(0,255) + " ...";
                  publishProgress("\nProblem at CK server: " + err + "\n");
                  return null;
              }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-             String path00="/sdcard";
-             //String path00="/storage/sdcard1";
-
-             String pathZ=path00+"/openscience/code/0ef2b70e4791b83b/arm64-v8a";
-             String pathC=path00+"/openscience/code/6fa68c1b9805d268/arm64-v8a";
-             String pathD=path00+"/openscience/data/4a6e91d75d682cec";
-
-
-             //todo remove test downloading
-//             String url = "http://apache-mirror.rbc.ru/pub/apache/maven/maven-3/3.3.9/binaries/apache-maven-3.3.9-bin.tar.gz";
-//             String md5 = "516923b3955b6035ba6b0a5b031fbd8b";
-             String url = "http://dl.caffe.berkeleyvision.org/bvlc_reference_caffenet.caffemodel";
-             String md5 = "af678f0bd3cdd2437e35679d88665170";
-             String localPath = pathD + "/model/bvlc_reference_caffenet.caffemodel";
-             downloadFileAndCheckMd5(url, localPath, md5);
-
-             publishProgress("\nBB="+path00+"\n\n");
-
              try {
-//                 copy_bin_file(pathX+"/a.out", path+"/a.out");
-//                 copy_bin_file(pathX+"/librtlxopenme.so", path+"/librtlxopenme.so");
-                 copy_bin_file(pathC+"/classification", path+"/classification");
-                 copy_bin_file(pathC+"/caffe", path+"/caffe");
-                 copy_bin_file(pathZ+"/libcaffe_jni.so", path+"/libcaffe_jni.so");
-                 copy_bin_file(pathZ+"/libcaffe.so", path+"/libcaffe.so");
-             } catch (IOException e) {
-                 e.printStackTrace();
+                 JSONArray scenarios = r.getJSONArray("scenarios");
+                 String localPath = path + File.separator + "openscience" + File.separator;
+                 String localFileDir = localPath;
+                 File localFD=new File(localFileDir);
+                 if (!localFD.exists()) {
+                     if (!localFD.mkdirs()) {
+                         publishProgress("\nError creating dir (" + localFileDir+ ") ...\n\n");
+                         return null;
+                     }
+                 }
+
+                 String libPath = null;
+                 String executablePath = null;
+                 String imageFilePath = null;
+                 for (int i = 0; i < scenarios.length(); i++) {
+                     JSONObject scenario = scenarios.getJSONObject(i);
+                     scenario.getString("module_uoa");
+                     scenario.getString("data_uid");
+                     scenario.getJSONObject("search_dict");
+                     scenario.getString("ignore_update");
+                     scenario.getString("search_string");
+                     JSONObject meta = scenario.getJSONObject("meta");
+
+                     JSONArray files = meta.getJSONArray("files");
+                     for (int j = 0; j < files.length(); j++) {
+                         JSONObject file = files.getJSONObject(j);
+                         String fileName = file.getString("filename");
+                         String fileDir = localPath + file.getString("path");
+                         File fp=new File(fileDir);
+                         if (!fp.exists()) {
+                             if (!fp.mkdirs()) {
+                                 publishProgress("\nError creating dir (" + fileDir+ ") ...\n\n");
+                                 return null;
+                             }
+                         }
+
+                         final String targetFilePath = fileDir + File.separator + fileName;
+                         if (downloadFileAndCheckMd5(
+                                 file.getString("url"),
+                                 targetFilePath,
+                                 file.getString("md5"),
+                                 new ProgressPublisher() {
+                                     @Override
+                                     public void publish(int percent) {
+                                         publishProgress("\n Downloading file "+targetFilePath+" :" + percent + "%\n\n");
+                                     }
+                                 })) {
+                             publishProgress("\n File "+targetFilePath+"sucessfully downloaded\n\n");
+                         }
+
+                         String[] chmodResult=openme.openme_run_program(chmod744+" "+targetFilePath, null, fileDir);
+
+                         String executable = null;
+
+                         try {
+                             executable = file.getString("executable");
+                         } catch (JSONException e) {
+                             // executable is not mandatory
+                         }
+                         if (executable != null && executable.equalsIgnoreCase("yes")) {
+                             if (targetFilePath.contains(".so")) { //todo add parameter image=yes to response like for executable
+                                 libPath = fileDir;
+                             } else {
+                                 executablePath = fileDir;
+                             }
+                         }
+
+                         if (targetFilePath.contains("jpg")) { //todo add parameter image=yes to response like for executable
+                             imageFilePath = targetFilePath;
+                         }
+
+                     }
+
+                     if (imageFilePath == null) {
+                         publishProgress("\nError image file path does not set.\n\n");
+                         return null;
+                     }
+
+                     if (libPath == null) {
+                         publishProgress("\nError lib path does not set.\n\n");
+                         return null;
+                     }
+
+                     String scenarioCmd = meta.getString("cmd");
+
+                     String[] scenarioEnv={
+                             "CT_REPEAT_MAIN="+String.valueOf(1),
+                             "LD_LIBRARY_PATH="+libPath+":$LD_LIBRARY_PATH",
+                     };
+
+
+                     scenarioCmd = scenarioCmd.replace("$#local_path#$", path + File.separator);
+                     scenarioCmd = scenarioCmd.replace("$#image#$", imageFilePath);
+
+                     String[] recognitionREsult=openme.openme_run_program(scenarioCmd, scenarioEnv, executablePath); //todo fix ck response cmd value: add appropriate path to executable from according to path value at "file" json
+                     if (recognitionREsult[0] != null && !recognitionREsult[0].trim().equals("")) {
+                         publishProgress("\nRecognition errors: " + recognitionREsult[0] + "\n\n");
+                     }
+                     publishProgress("\nRecognition result: "+recognitionREsult[1]+"\n\n");
+//                     publishProgress("\nRecognition warnnings:"+recognitionREsult[2]+"\n\n"); //todo now it prints text like: ANDROID_ROOT not set, it's better do not display it
+
+                     //Delay program for 1 sec
+                     try {
+                         Thread.sleep(1000);
+                     } catch(InterruptedException ex) {
+                     }
+                 }
+
+             } catch (JSONException e) {
+                 publishProgress("\nError obtaining key 'error' from OpenME output (" + e.getMessage() + ") ...\n\n");
                  return null;
              }
-
-             String[] retB=openme.openme_run_program(chmod744+" "+path+"/classification", null, path);
-             publishProgress("\nB0="+retB[0]+"\n\n");
-             publishProgress("\nB1="+retB[1]+"\n\n");
-             publishProgress("\nB2="+retB[2]+"\n\n");
-
-             retB=openme.openme_run_program(chmod744+" "+path+"/caffe", null, path);
-             publishProgress("\nB0="+retB[0]+"\n\n");
-             publishProgress("\nB1="+retB[1]+"\n\n");
-             publishProgress("\nB2="+retB[2]+"\n\n");
-
-             retB=openme.openme_run_program("ls -l", null, path);
-             publishProgress("\nB0="+retB[0]+"\n\n");
-             publishProgress("\nB1="+retB[1]+"\n\n");
-             publishProgress("\nB2="+retB[2]+"\n\n");
-
-             String[] envA={"CT_REPEAT_MAIN="+String.valueOf(1), "LD_LIBRARY_PATH="+path+":$LD_LIBRARY_PATH"};
-             String cmdA="./classification "+pathD+"/topology/deploy.prototxt "+
-                     pathD+"/model/bvlc_reference_caffenet.caffemodel "+
-                     pathD+"/mean/imagenet_mean.binaryproto "+
-                     pathD+"/labels/synset_words.txt "+
-                     pathD+"/demo/mouse.jpg";
-
-             String[] retA=openme.openme_run_program(cmdA, envA, path);
-             publishProgress("\nX0="+retA[0]+"\n\n");
-             publishProgress("\nX1="+retA[1]+"\n\n");
-             publishProgress("\nX2="+retA[2]+"\n\n");
-
-             //Delay program for 1 sec
-             try {
-                 Thread.sleep(1000);
-             } catch(InterruptedException ex) {
-             }
-
-
-
 
              //Delay program for 1 sec
              try {
@@ -1826,9 +1856,6 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
              }
 
              if (rr==0) return null; // force quit for now
-
-
-
 
 
 
@@ -2838,7 +2865,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
         //todo implement;
     }
 
-    private boolean downloadFileAndCheckMd5(String urlString, String localPath, String md5) {
+    private boolean downloadFileAndCheckMd5(String urlString, String localPath, String md5, ProgressPublisher progressPublisher) {
         try {
 
             String existedlocalPathMD5 =fileToMD5(localPath);
@@ -2866,7 +2893,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
             while ((count = input.read(data)) != -1) {
                 total += count;
                 int progressPercent = (int)((total*100)/lenghtOfFile);
-                updateProgress(progressPercent);
+                progressPublisher.publish(progressPercent);
                 output.write(data, 0, count);
             }
 
@@ -2923,5 +2950,9 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
             returnVal += Integer.toString(( md5Bytes[i] & 0xff ) + 0x100, 16).substring(1);
         }
         return returnVal.toUpperCase();
+    }
+
+    interface ProgressPublisher {
+        void publish(int percent);
     }
 }

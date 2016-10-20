@@ -1742,14 +1742,15 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
                      return null;
                  }
 
-                 String localSDCardPath = File.separator + "sdcard" + File.separator + "openscience" + File.separator;
+//                 String externalSDCard = System.getenv("SECONDARY_STORAGE"); //this is correct way to detect externalSDCard but there is problem with permissions ls -l
+                 String externalSDCard = Environment.getExternalStorageDirectory().getAbsolutePath(); // actually  this is internal emulated sdcard storage
+                 String externalSDCardOpensciencePath = externalSDCard + File.separator + "openscience" + File.separator;
                  String localAppPath = path + File.separator + "openscience" + File.separator;
 
-                 String localFileDir = localSDCardPath;
-                 File localFD=new File(localFileDir);
-                 if (!localFD.exists()) {
-                     if (!localFD.mkdirs()) {
-                         publishProgress("\nError creating dir (" + localFileDir+ ") ...\n\n");
+                 File externalSDCardFile=new File(externalSDCardOpensciencePath);
+                 if (!externalSDCardFile.exists()) {
+                     if (!externalSDCardFile.mkdirs()) {
+                         publishProgress("\nError creating dir (" + externalSDCardOpensciencePath+ ") ...\n\n");
                          return null;
                      }
                  }
@@ -1770,7 +1771,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
                      for (int j = 0; j < files.length(); j++) {
                          JSONObject file = files.getJSONObject(j);
                          String fileName = file.getString("filename");
-                         String fileDir = localSDCardPath + file.getString("path");
+                         String fileDir = externalSDCardOpensciencePath + file.getString("path");
                          File fp=new File(fileDir);
                          if (!fp.exists()) {
                              if (!fp.mkdirs()) {

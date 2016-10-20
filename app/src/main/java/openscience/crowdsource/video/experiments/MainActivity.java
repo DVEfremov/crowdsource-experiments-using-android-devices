@@ -1742,8 +1742,10 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
                      return null;
                  }
 
-                 String localPath = File.separator + "sdcard" + File.separator + "openscience" + File.separator;
-                 String localFileDir = localPath;
+                 String localSDCardPath = File.separator + "sdcard" + File.separator + "openscience" + File.separator;
+                 String localAppPath = path + File.separator + "openscience" + File.separator;
+
+                 String localFileDir = localSDCardPath;
                  File localFD=new File(localFileDir);
                  if (!localFD.exists()) {
                      if (!localFD.mkdirs()) {
@@ -1768,7 +1770,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
                      for (int j = 0; j < files.length(); j++) {
                          JSONObject file = files.getJSONObject(j);
                          String fileName = file.getString("filename");
-                         String fileDir = localPath + file.getString("path");
+                         String fileDir = localSDCardPath + file.getString("path");
                          File fp=new File(fileDir);
                          if (!fp.exists()) {
                              if (!fp.mkdirs()) {
@@ -1778,38 +1780,79 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
                          }
 
                          final String targetFilePath = fileDir + File.separator + fileName;
+                         String finalTargetFilePath = targetFilePath;
+                         String finalTargetFileDir = fileDir;
+                         String url = file.getString("url");
+                         String md5 = file.getString("md5");
                          if (downloadFileAndCheckMd5(
-                                 file.getString("url"),
+                                 url,
                                  targetFilePath,
-                                 file.getString("md5"),
+                                 md5,
                                  new ProgressPublisher() {
                                      @Override
                                      public void publish(int percent) {
-                                         publishProgress("\n Downloading file "+targetFilePath+" :" + percent + "%\n\n");
+                                         publishProgress("\n Downloading file "+targetFilePath+" : " + percent + "%\n\n");
+                                     }
+
+                                     @Override
+                                     public void println(String text) {
+                                         publishProgress("\n" + text + "\n");
                                      }
                                  })) {
-                             publishProgress("\n File "+targetFilePath+"sucessfully downloaded\n\n");
+                             String copyToAppSpace = null;
+                             try {
+                                 copyToAppSpace = file.getString("copy_to_app_space");
+                             } catch (JSONException e) {
+                                 // copyToAppSpace is not mandatory
+                             }
+                             if (copyToAppSpace != null && copyToAppSpace.equalsIgnoreCase("yes")) {
+                                 String fileAppDir = localAppPath + file.getString("path");
+                                 File appfp=new File(fileDir);
+                                 if (!appfp.exists()) {
+                                     if (!appfp.mkdirs()) {
+                                         publishProgress("\nError creating dir (" + fileAppDir+ ") ...\n\n");
+                                         return null;
+                                     }
+                                 }
+
+                                 final String targetAppFilePath = fileAppDir + File.separator + fileName;
+                                 try {
+                                     copy_bin_file(targetFilePath, targetAppFilePath);
+                                     finalTargetFileDir = fileAppDir;
+                                     finalTargetFilePath = targetAppFilePath;
+                                     publishProgress("\nFile" + targetFilePath+ " sucessfully copied to " +  targetAppFilePath + "\n\n");
+                                 } catch (IOException e) {
+                                     e.printStackTrace();
+                                     publishProgress("\nError copying file" + targetFilePath+ " to " +  targetAppFilePath + " ...\n\n");
+                                     return null;
+                                 }
+
+                             }
                          }
 
-
                          String executable = null;
-
                          try {
                              executable = file.getString("executable");
                          } catch (JSONException e) {
                              // executable is not mandatory
                          }
                          if (executable != null && executable.equalsIgnoreCase("yes")) {
-                             if (targetFilePath.contains(".so")) { //todo add parameter image=yes to response like for executable
-                                 libPath = fileDir;
+                             if (finalTargetFilePath.contains(".so")) { //todo add parameter image=yes to response like for executable
+                                 libPath = finalTargetFileDir;
                              } else {
-                                 executablePath = fileDir;
+                                 executablePath = finalTargetFileDir;
                              }
-                             String[] chmodResult=openme.openme_run_program(chmod744+" "+targetFilePath, null, fileDir);
+                             String[] chmodResult=openme.openme_run_program(chmod744 + " " + finalTargetFilePath, null, finalTargetFileDir);
+                             if (chmodResult[0].isEmpty() && chmodResult[1].isEmpty() && chmodResult[2].isEmpty()) {
+                                 publishProgress("\nFile" + finalTargetFilePath + " sucessfully set as executable \n\n");
+                             } else {
+                                 publishProgress("\nError seting  file" + targetFilePath+ " as executable ...\n\n");
+                                 return null;
+                             }
                          }
 
-                         if (targetFilePath.contains("jpg")) { //todo add parameter image=yes to response like for executable
-                             imageFilePath = targetFilePath;
+                         if (finalTargetFilePath.contains("jpg")) { //todo add parameter image=yes to response like for executable
+                             imageFilePath = finalTargetFilePath;
                          }
 
                      }
@@ -2866,39 +2909,38 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
         tvLabel.setText("");
     }
 
-    void updateProgress(int progress) {
-        //todo implement;
-    }
-
     private boolean downloadFileAndCheckMd5(String urlString, String localPath, String md5, ProgressPublisher progressPublisher) {
         try {
-
             String existedlocalPathMD5 =fileToMD5(localPath);
             if (existedlocalPathMD5 != null && existedlocalPathMD5.equalsIgnoreCase(md5)) {
                 return true;
             }
 
+            int BUFFER_SIZE = 1024;
+            byte data[] = new byte[BUFFER_SIZE];
             int count;
 
             URL url = new URL(urlString);
+            URLConnection conection = url.openConnection();
+            conection.connect();
 
-            URLConnection conexion = url.openConnection();
-            conexion.connect();
-
-            int lenghtOfFile = conexion.getContentLength();
-            Log.d("ANDRO_ASYNC", "Lenght of file: " + lenghtOfFile);
-
+            int lenghtOfFile = conection.getContentLength();
             InputStream input = new BufferedInputStream(url.openStream());
             OutputStream output = new FileOutputStream(localPath);
 
-            byte data[] = new byte[1024];
 
             long total = 0;
-
+            int progressPercent = 0;
+            int prevProgressPercent = 0;
             while ((count = input.read(data)) != -1) {
                 total += count;
-                int progressPercent = (int)((total*100)/lenghtOfFile);
-                progressPublisher.publish(progressPercent);
+                if (lenghtOfFile > 0) {
+                    progressPercent = (int) ((total * 100) / lenghtOfFile);
+                }
+                if (progressPercent != prevProgressPercent) {
+                    progressPublisher.publish(progressPercent);
+                    prevProgressPercent = progressPercent;
+                }
                 output.write(data, 0, count);
             }
 
@@ -2909,17 +2951,21 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
 
             String gotMD5 =fileToMD5(localPath);
             if (!gotMD5.equalsIgnoreCase(md5)) {
-                Log.d("downloadFileAndCheckMd5","ERROR: MD5 is not satisified!");
+                progressPublisher.println("ERROR: MD5 is not satisfied, please try again.");
                 return false;
             } else {
-                Log.d("downloadFileAndCheckMd5", "File succesfully downloaded from " + urlString + " to local files " + localPath);
+                progressPublisher.println("File succesfully downloaded from " + urlString + " to local files " + localPath);
                 return true;
             }
         } catch (FileNotFoundException e) {
-            e.printStackTrace();
+            progressPublisher.println("ERROR: downloading from " + urlString + " to local files " + localPath + " " + e.getLocalizedMessage());
             return false;
         } catch (IOException e) {
+            progressPublisher.println("ERROR: downloading from " + urlString + " to local files " + localPath + " " + e.getLocalizedMessage());
+            return false;
+        } catch (Throwable e) {
             e.printStackTrace();
+            progressPublisher.println("ERROR: downloading from " + urlString + " to local files " + localPath + " " + e.getLocalizedMessage());
             return false;
         }
     }
@@ -2959,5 +3005,6 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
 
     interface ProgressPublisher {
         void publish(int percent);
+        void println(String text);
     }
 }

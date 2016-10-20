@@ -1760,10 +1760,11 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
                  String libPath = null;
                  String executablePath = null;
                  String imageFilePath = null;
+                 String imageFileName = null;
                  for (int i = 0; i < scenarios.length(); i++) {
                      JSONObject scenario = scenarios.getJSONObject(i);
                      scenario.getString("module_uoa");
-                     scenario.getString("data_uid");
+                     String dataUID = scenario.getString("data_uid");
                      scenario.getJSONObject("search_dict");
                      scenario.getString("ignore_update");
                      scenario.getString("search_string");
@@ -1823,10 +1824,10 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
                                      copy_bin_file(targetFilePath, targetAppFilePath);
                                      finalTargetFileDir = fileAppDir;
                                      finalTargetFilePath = targetAppFilePath;
-                                     publishProgress("\nFile" + targetFilePath+ " sucessfully copied to " +  targetAppFilePath + "\n\n");
+                                     publishProgress("\nFile " + targetFilePath+ " sucessfully copied to " +  targetAppFilePath + "\n\n");
                                  } catch (IOException e) {
                                      e.printStackTrace();
-                                     publishProgress("\nError copying file" + targetFilePath+ " to " +  targetAppFilePath + " ...\n\n");
+                                     publishProgress("\nError copying file " + targetFilePath+ " to " +  targetAppFilePath + " ...\n\n");
                                      return null;
                                  }
 
@@ -1847,15 +1848,16 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
                              }
                              String[] chmodResult=openme.openme_run_program(chmod744 + " " + finalTargetFilePath, null, finalTargetFileDir);
                              if (chmodResult[0].isEmpty() && chmodResult[1].isEmpty() && chmodResult[2].isEmpty()) {
-                                 publishProgress("\nFile" + finalTargetFilePath + " sucessfully set as executable \n\n");
+                                 publishProgress("\nFile " + finalTargetFilePath + " sucessfully set as executable \n\n");
                              } else {
-                                 publishProgress("\nError seting  file" + targetFilePath+ " as executable ...\n\n");
+                                 publishProgress("\nError seting  file " + targetFilePath+ " as executable ...\n\n");
                                  return null;
                              }
                          }
 
                          if (finalTargetFilePath.contains("jpg")) { //todo add parameter image=yes to response like for executable
                              imageFilePath = finalTargetFilePath;
+                             imageFileName = fileName;
                          }
 
                      }
@@ -1881,12 +1883,28 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
                      scenarioCmd = scenarioCmd.replace("$#local_path#$", externalSDCardPath + File.separator);
                      scenarioCmd = scenarioCmd.replace("$#image#$", imageFilePath);
 
+                     long startTime = System.currentTimeMillis();
                      String[] recognitionREsult=openme.openme_run_program(scenarioCmd, scenarioEnv, executablePath); //todo fix ck response cmd value: add appropriate path to executable from according to path value at "file" json
+                     long processingTime = System.currentTimeMillis() - startTime;
                      if (recognitionREsult[0] != null && !recognitionREsult[0].trim().equals("")) {
                          publishProgress("\nRecognition errors: " + recognitionREsult[0] + "\n\n");
                      }
-                     publishProgress("\nRecognition result: "+recognitionREsult[1]+"\n\n");
+                     String recognitionResultText = recognitionREsult[1];
+                     publishProgress("\nRecognition time: " + processingTime + " ms \n\n");
+                     publishProgress("\nRecognition result: "+ recognitionResultText +"\n\n");
 //                     publishProgress("\nRecognition warnnings:"+recognitionREsult[2]+"\n\n"); //todo now it prints text like: ANDROID_ROOT not set, it's better do not display it
+
+
+                     RecognitionResult recognitionResult = new RecognitionResult();
+                     recognitionResult.setCrowdUID(dataUID);  // I'm not sure about it
+                     recognitionResult.setProcessingTime(processingTime);
+                     recognitionResult.setImageFileName(imageFileName);
+                     // todo load image frnm  imageFilePath and get image siza
+                     recognitionResult.setImageHeight(3024);  //todo remove hardcoded values from loaded image
+                     recognitionResult.setImageWidth(4032);   //todo remove hardcoded values from loaded image
+
+                     // todo implement publishRecognitionResultToserver and uncomment
+                     // publishRecognitionResultToserver(recognitionResult);
 
                      //Delay program for 1 sec
                      try {
@@ -2087,9 +2105,9 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
 
                      // Check that got request ID
                      try {
-                         crowd_uid = (String) r.get("crowd_uid");
+                         crowd_uid = (String) r.get("crowdUID");
                      } catch (JSONException e) {
-                         publishProgress("\nError obtaining key 'crowd_uid' from CK server (" + e.getMessage() + ") ...\n\n");
+                         publishProgress("\nError obtaining key 'crowdUID' from CK server (" + e.getMessage() + ") ...\n\n");
                          return null;
                      }
 
@@ -2746,7 +2764,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
                      ii.put("action", "request");
                      ii.put("module_uoa", "program.optimization.mobile");
                      ii.put("email", email);
-                     ii.put("crowd_uid", crowd_uid);
+                     ii.put("crowdUID", crowd_uid);
                      ii.put("out", "json");
                      ii.put("results", results);
                      ii.put("out", "json");
@@ -2817,7 +2835,176 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
 
              return null;
          }
-     }
+
+
+
+        class RecognitionResult {
+            private long processingTime;
+            private String crowdUID;
+            private String recognitionResultText;
+            private String imageFileName;
+            private int imageHeight;
+            private int imageWidth;
+
+            public long getProcessingTime() {
+                return processingTime;
+            }
+
+            public void setProcessingTime(long processingTime) {
+                this.processingTime = processingTime;
+            }
+
+            public String getCrowdUID() {
+                return crowdUID;
+            }
+
+            public void setCrowdUID(String crowdUID) {
+                this.crowdUID = crowdUID;
+            }
+
+            public String getRecognitionResultText() {
+                return recognitionResultText;
+            }
+
+            public void setRecognitionResultText(String recognitionResultText) {
+                this.recognitionResultText = recognitionResultText;
+            }
+
+            public String getImageFileName() {
+                return imageFileName;
+            }
+
+            public void setImageFileName(String imageFileName) {
+                this.imageFileName = imageFileName;
+            }
+
+            public int getImageHeight() {
+                return imageHeight;
+            }
+
+            public void setImageHeight(int imageHeight) {
+                this.imageHeight = imageHeight;
+            }
+
+            public int getImageWidth() {
+                return imageWidth;
+            }
+
+            public void setImageWidth(int imageWidth) {
+                this.imageWidth = imageWidth;
+            }
+
+            @Override
+            public boolean equals(Object o) {
+                if (this == o) return true;
+                if (o == null || getClass() != o.getClass()) return false;
+
+                RecognitionResult that = (RecognitionResult) o;
+
+                if (processingTime != that.processingTime) return false;
+                if (imageHeight != that.imageHeight) return false;
+                if (imageWidth != that.imageWidth) return false;
+                if (crowdUID != null ? !crowdUID.equals(that.crowdUID) : that.crowdUID != null)
+                    return false;
+                if (recognitionResultText != null ? !recognitionResultText.equals(that.recognitionResultText) : that.recognitionResultText != null)
+                    return false;
+                return imageFileName != null ? imageFileName.equals(that.imageFileName) : that.imageFileName == null;
+
+            }
+
+            @Override
+            public int hashCode() {
+                int result = (int) (processingTime ^ (processingTime >>> 32));
+                result = 31 * result + (crowdUID != null ? crowdUID.hashCode() : 0);
+                result = 31 * result + (recognitionResultText != null ? recognitionResultText.hashCode() : 0);
+                result = 31 * result + (imageFileName != null ? imageFileName.hashCode() : 0);
+                result = 31 * result + imageHeight;
+                result = 31 * result + imageWidth;
+                return result;
+            }
+        }
+
+        //todo need to provide correct implementation for this method to send recognition
+        // results to repo
+        void publishRecognitionResultToserver(RecognitionResult recognitionResult) {
+            // parse recognitionResultText to bean if required
+
+            // Submitting results to CK server
+            publishProgress("Obtaining list of public Collective Knowledge servers from " + url_cserver + " ...\n");
+            String curl = get_shared_computing_resource(url_cserver);
+
+            publishProgress(s_line);
+            publishProgress("Submitting results to Collective Knowledge Aggregator for online classification ...\n");
+
+            JSONObject publishREquest = new JSONObject();
+            try {
+                JSONObject results = new JSONObject();
+                results.put("recognition_result", recognitionResult.getRecognitionResultText());
+
+
+                publishREquest.put("remote_server_url", curl);
+                publishREquest.put("action", "request");
+                publishREquest.put("module_uoa", "program.optimization.mobile");
+                publishREquest.put("email", email);
+                publishREquest.put("crowdUID", recognitionResult.getCrowdUID());
+                publishREquest.put("out", "json");
+                publishREquest.put("results", results);
+                publishREquest.put("out", "json");
+                publishREquest.put("out", "json");
+            } catch (JSONException e) {
+                publishProgress("\nError with JSONObject ...\n\n");
+                return;
+            }
+
+            JSONObject response;
+            try {
+                response = openme.remote_access(publishREquest);
+            } catch (JSONException e) {
+                publishProgress("\nError calling OpenME interface (" + e.getMessage() + ") ...\n\n");
+                return;
+            }
+
+            int responseCode = 0;
+            if (!response.has("return")) {
+                publishProgress("\nError obtaining key 'return' from OpenME output ...\n\n");
+                return;
+            }
+
+            try {
+                Object rx=response.get("return");
+                if (rx instanceof String) responseCode=Integer.parseInt((String)rx);
+                else responseCode=(Integer)rx;
+            } catch (JSONException e) {
+                publishProgress("\nError obtaining key 'return' from OpenME output (" + e.getMessage() + ") ...\n\n");
+                return;
+            }
+
+            if (responseCode > 0) {
+                String err = "";
+                try {
+                    err = (String) response.get("error");
+                } catch (JSONException e) {
+                    publishProgress("\nError obtaining key 'error' from OpenME output (" + e.getMessage() + ") ...\n\n");
+                    return;
+                }
+
+                publishProgress("\nProblem accessing CK server: " + err + "\n");
+                return;
+            }
+
+            String status= "";
+
+            try {
+                status = (String) response.get("status");
+            } catch (JSONException e) {
+                publishProgress("\nError obtaining key 'status' from OpenME output (" + e.getMessage() + ") ...\n\n");
+            }
+
+            publishProgress('\n'+status+'\n');
+
+        }
+
+    }
 
     private class CNNTask extends AsyncTask<String, Void, Integer> {
         private CNNListener listener;

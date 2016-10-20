@@ -1745,7 +1745,8 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
 //                 String externalSDCard = System.getenv("SECONDARY_STORAGE"); //this is correct way to detect externalSDCard but there is problem with permissions ls -l
 //                 String externalSDCard = Environment.getExternalStorageDirectory().getAbsolutePath(); // actually  this is internal emulated sdcard storage
 //                 String externalSDCardOpensciencePath = externalSDCard + File.separator + "openscience" + File.separator;
-                 String externalSDCardOpensciencePath = File.separator + "sdcard" + File.separator + "openscience" + File.separator;
+                 String externalSDCardPath = File.separator + "sdcard";
+                 String externalSDCardOpensciencePath = externalSDCardPath + File.separator + "openscience" + File.separator;
                  String localAppPath = path + File.separator + "openscience" + File.separator;
 
                  File externalSDCardFile=new File(externalSDCardOpensciencePath);
@@ -1877,7 +1878,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
                      };
 
 
-                     scenarioCmd = scenarioCmd.replace("$#local_path#$", path + File.separator);
+                     scenarioCmd = scenarioCmd.replace("$#local_path#$", externalSDCardPath + File.separator);
                      scenarioCmd = scenarioCmd.replace("$#image#$", imageFilePath);
 
                      String[] recognitionREsult=openme.openme_run_program(scenarioCmd, scenarioEnv, executablePath); //todo fix ck response cmd value: add appropriate path to executable from according to path value at "file" json

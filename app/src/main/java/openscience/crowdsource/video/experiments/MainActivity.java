@@ -1743,8 +1743,9 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
                  }
 
 //                 String externalSDCard = System.getenv("SECONDARY_STORAGE"); //this is correct way to detect externalSDCard but there is problem with permissions ls -l
-                 String externalSDCard = Environment.getExternalStorageDirectory().getAbsolutePath(); // actually  this is internal emulated sdcard storage
-                 String externalSDCardOpensciencePath = externalSDCard + File.separator + "openscience" + File.separator;
+//                 String externalSDCard = Environment.getExternalStorageDirectory().getAbsolutePath(); // actually  this is internal emulated sdcard storage
+//                 String externalSDCardOpensciencePath = externalSDCard + File.separator + "openscience" + File.separator;
+                 String externalSDCardOpensciencePath = File.separator + "sdcard" + File.separator + "openscience" + File.separator;
                  String localAppPath = path + File.separator + "openscience" + File.separator;
 
                  File externalSDCardFile=new File(externalSDCardOpensciencePath);
@@ -1808,7 +1809,7 @@ public class MainActivity extends Activity implements SurfaceHolder.Callback , C
                              }
                              if (copyToAppSpace != null && copyToAppSpace.equalsIgnoreCase("yes")) {
                                  String fileAppDir = localAppPath + file.getString("path");
-                                 File appfp=new File(fileDir);
+                                 File appfp=new File(fileAppDir);
                                  if (!appfp.exists()) {
                                      if (!appfp.mkdirs()) {
                                          publishProgress("\nError creating dir (" + fileAppDir+ ") ...\n\n");

@@ -119,7 +119,6 @@ public class MainActivity extends Activity {
 
     private Button btnSelect;
 
-    private TextView tvLabel;
     private ProgressDialog dialog;
     private Bitmap bmp;
 
@@ -201,7 +200,6 @@ public class MainActivity extends Activity {
 
     private Boolean isPreloadRunning = false;
     private Boolean isPreloadMode = true;
-    private Button preloadScenarios;
     private Spinner scenarioSpinner;
     private ArrayAdapter<String> spinnerAdapter;
     private List<RecognitionScenario> recognitionScenarios = new LinkedList<>();
@@ -258,7 +256,7 @@ public class MainActivity extends Activity {
 
     private RecognitionScenario getSelectedRecognitionScenario() {
         for (RecognitionScenario recognitionScenario : recognitionScenarios) {
-            if(recognitionScenario.getModuleUOA().equalsIgnoreCase(scenarioSpinner.getSelectedItem().toString())) {
+            if(recognitionScenario.getTitle().equalsIgnoreCase(scenarioSpinner.getSelectedItem().toString())) {
                 return recognitionScenario;
             }
         }
@@ -321,7 +319,6 @@ public class MainActivity extends Activity {
         b_start = (Button) findViewById(R.id.b_start);
         b_start.setText(s_b_start);
 
-        preloadScenarios = (Button) findViewById(R.id.b_preload);
         scenarioSpinner = (Spinner)findViewById(R.id.s_scenario);
         spinnerAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, android.R.id.text1);
         spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
@@ -332,8 +329,6 @@ public class MainActivity extends Activity {
         b_start.setText(s_b_start);
 
         t_email = (EditText) findViewById(R.id.t_email);
-
-        tvLabel = (TextView) findViewById(R.id.tvLabel);
 
         btnSelect = (Button) findViewById(R.id.btnSelect);
         btnSelect.setOnClickListener(new Button.OnClickListener() {
@@ -398,22 +393,16 @@ public class MainActivity extends Activity {
         } catch (InterruptedException e) {
             //todo correct catch o re throw
         }
+        preloadScenarioses();
     }
     @Override
     protected void onResume() {
         super.onResume();
-//        camera = Camera.open();
-//        startCameraPreview();
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-//        releaseMediaRecorder();
-//        if (camera != null) {
-//            camera.release();
-//        }
-//        camera = null;
         stopCameraPreview();
     }
     /*************************************************************************/
@@ -491,33 +480,6 @@ public class MainActivity extends Activity {
         });
 
         /*************************************************************************/
-        preloadScenarios.setOnClickListener(new View.OnClickListener() {
-            @SuppressWarnings({"unused", "unchecked"})
-            @Override
-            public void onClick(View arg0) {
-                if (isPreloadRunning) {
-                    isPreloadRunning = false;
-
-                    preloadScenarios.setEnabled(false);
-
-                    log.append(s_line);
-                    log.append(s_thanks);
-                    log.append("Interrupting scenarios preloading ...");
-
-                } else {
-                    isPreloadRunning = true;
-                    preloadScenarios.setText("Preloading...");
-                    preloadScenarios.setEnabled(false);
-                    isPreloadMode = true;
-                    spinnerAdapter.clear();
-                    spinnerAdapter.notifyDataSetChanged();
-                    tvLabel.setText("");
-                    crowdTask = new RunCodeAsync().execute("");
-                }
-            }
-        });
-
-        /*************************************************************************/
         b_start.setOnClickListener(new View.OnClickListener() {
             @SuppressWarnings({"unused", "unchecked"})
             @Override
@@ -564,6 +526,24 @@ public class MainActivity extends Activity {
                 }
             }
         });
+    }
+
+    private void preloadScenarioses() {
+        isPreloadRunning = true;
+        spinnerAdapter.add("Preloading...");
+        isPreloadMode = true;
+        spinnerAdapter.clear();
+        spinnerAdapter.notifyDataSetChanged();
+        updateControlStatusPreloading(false);
+        crowdTask = new RunCodeAsync().execute("");
+    }
+
+    private void updateControlStatusPreloading(boolean isEnable) {
+        scenarioSpinner.setEnabled(isEnable);
+        startStopCam.setEnabled(isEnable);
+        recognize.setEnabled(isEnable);
+        btnSelect.setEnabled(isEnable);
+        b_start.setEnabled(isEnable);
     }
 
     /*************************************************************************/
@@ -860,8 +840,6 @@ public class MainActivity extends Activity {
             b_clean.setEnabled(true);
             running = false;
             isPreloadRunning = false;
-            preloadScenarios.setText(PRELOAD_BUTTON);
-            preloadScenarios.setEnabled(true);
         }
 
         /*************************************************************************/
@@ -1883,6 +1861,7 @@ public class MainActivity extends Activity {
                         recognitionScenario.setDataUOA(data_uoa);
                         recognitionScenario.setRawJSON(scenario);
                         recognitionScenario.setImagePath(imageFilePath);
+                        recognitionScenario.setTitle(meta.getString("title"));
                         recognitionScenarios.add(recognitionScenario);
 
                         publishProgress("\n Preloaded scenario info:  " + recognitionScenario.toString() + "\n\n");
@@ -1891,9 +1870,9 @@ public class MainActivity extends Activity {
                             @Override
                             public void run() {
                                 //stuff that updates ui
-                                spinnerAdapter.add(recognitionScenario.getModuleUOA());
+                                spinnerAdapter.add(recognitionScenario.getTitle());
+                                updateControlStatusPreloading(true);
                                 spinnerAdapter.notifyDataSetChanged();
-                                tvLabel.setText(recognitionScenario.getDataUOA());
                             }
                         });
                         continue;
@@ -3235,7 +3214,17 @@ public class MainActivity extends Activity {
         private String imagePath;
         private String dataUOA;
         private String moduleUOA;
+        private String title;
         private JSONObject rawJSON; //todo move out to file
+
+
+        public String getTitle() {
+            return title;
+        }
+
+        public void setTitle(String title) {
+            this.title = title;
+        }
 
         public String getImagePath() {
             return imagePath;
